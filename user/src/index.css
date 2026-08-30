@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-red: #e60000;
+  --color-brand-gold: #fdb813;
+  --color-brand-dark: #1a1a1a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: #ffffff;
+  color: var(--color-brand-dark);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  background-color: #ffffff;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-brand-gold) 60%, white);
+  outline-offset: 2px;
+}
+
+.font-arabic {
+  font-family: 'Noto Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif;
+}
