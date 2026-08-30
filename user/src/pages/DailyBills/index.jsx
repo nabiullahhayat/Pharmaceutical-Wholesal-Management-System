@@ -6,12 +6,23 @@ import Button from '../../components/ui/Button'
 import { STORAGE_KEYS } from '../../constants/storageKeys'
 import { useCollection, useLocalStorage, usePagination } from '../../hooks'
 import { exportDailyBillsToExcel } from '../../utils/exportDailyBills'
+import {
+  applyBillCreditEffects,
+  reverseBillCreditEffects,
+} from '../../utils/customerUtils'
+import { toNumber } from '../../utils/numbers'
+import {
+  applySaleStockMovements,
+  reverseSaleStockMovements,
+  validateSaleStock,
+} from '../../utils/saleStockUtils'
+import { notify } from '../../utils/toast'
 import BillPreviewModal from '../../components/bill/BillPreviewModal'
 import DailyBillExportModal from './DailyBillExportModal'
 import DailyBillFilters from './DailyBillFilters'
 import DailyBillModal from './DailyBillModal'
 import DailyBillTable from './DailyBillTable'
-import { defaultFilters, filterBills } from './dailyBillUtils'
+import { defaultFilters, filterBills, getBillLines, normalizeBill } from './dailyBillUtils'
 
 function DailyBillsPage() {
   const location = useLocation()
@@ -31,10 +42,11 @@ function DailyBillsPage() {
     remove: 'Daily sale deleted successfully',
   })
 
-  const [customers] = useLocalStorage(STORAGE_KEYS.CUSTOMERS)
+  const [customers, , refreshCustomers] = useLocalStorage(STORAGE_KEYS.CUSTOMERS)
   const [medicines] = useLocalStorage(STORAGE_KEYS.MEDICINES)
   const [visitors] = useLocalStorage(STORAGE_KEYS.VISITORS)
   const [medicineTypes] = useLocalStorage(STORAGE_KEYS.MEDICINE_TYPES)
+  const [stockMovements, , refreshStockMovements] = useLocalStorage(STORAGE_KEYS.STOCK_MOVEMENTS)
 
   const filteredBills = useMemo(
     () => filterBills(items, filters),
@@ -75,11 +87,65 @@ function DailyBillsPage() {
   }
 
   const handleSaveBill = (billData, recordId) => {
-    if (recordId) {
-      update(recordId, billData)
+    const normalized = normalizeBill(billData)
+    const oldBill = recordId ? items.find((bill) => bill.id === recordId) : null
+    const availableCreditBase =
+      customers.find((item) => item.id === normalized.customerId)?.creditBalance ?? 0
+    const restoredCredit =
+      oldBill?.customerId === normalized.customerId ? toNumber(oldBill.creditUsed) : 0
+    const creditUsed = Math.min(
+      toNumber(normalized.creditUsed),
+      toNumber(availableCreditBase) + restoredCredit,
+      normalized.grandTotal,
+    )
+
+    const finalBill = {
+      ...normalized,
+      creditUsed,
+      moneyPaid: normalized.moneyPaid || normalized.paidAmount > 0,
+    }
+
+    const stockCheck = validateSaleStock(
+      medicines,
+      stockMovements,
+      getBillLines(finalBill),
+      recordId ?? null,
+    )
+    if (!stockCheck.valid) {
+      notify.error(stockCheck.message)
       return
     }
-    add(billData)
+
+    if (recordId && oldBill) {
+      reverseBillCreditEffects(normalizeBill(oldBill))
+      reverseSaleStockMovements(recordId)
+    }
+
+    applyBillCreditEffects(finalBill)
+
+    if (recordId) {
+      update(recordId, finalBill)
+      applySaleStockMovements(recordId, finalBill)
+      refreshCustomers()
+      refreshStockMovements()
+      return
+    }
+
+    const created = add(finalBill)
+    applySaleStockMovements(created.id, finalBill)
+    refreshCustomers()
+    refreshStockMovements()
+  }
+
+  const handleDeleteBill = (billId) => {
+    const bill = items.find((item) => item.id === billId)
+    if (bill) {
+      reverseBillCreditEffects(normalizeBill(bill))
+      reverseSaleStockMovements(billId)
+      refreshCustomers()
+      refreshStockMovements()
+    }
+    remove(billId)
   }
 
   const handleSelectForBill = (bill) => {
@@ -142,7 +208,7 @@ function DailyBillsPage() {
         medicines={medicines}
         visitors={visitors}
         medicineTypes={medicineTypes}
-        existingBills={items}
+        stockMovements={stockMovements}
       />
 
       <BillPreviewModal
@@ -175,7 +241,7 @@ function DailyBillsPage() {
         <DailyBillTable
           bills={paginatedItems}
           onEdit={openEditModal}
-          onDelete={remove}
+          onDelete={handleDeleteBill}
           selectMode={selectForBill}
           onSelect={handleSelectForBill}
         />

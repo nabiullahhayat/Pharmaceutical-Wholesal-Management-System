@@ -23,11 +23,11 @@ function BillPage() {
         </div>
         <h2 className="text-lg font-semibold text-brand-dark">Create PDF Bill</h2>
         <p className="mt-2 text-sm text-gray-500">
-          Choose a daily sales record by token. Preview first, then download an A4 landscape PDF
-          with two duplicate copies on one page.
+          Choose a daily sales record by bill number. Preview first, then download an A4 landscape PDF
+          with two duplicate copies side by side on one page.
         </p>
         <Button className="mt-6" onClick={() => navigate('/daily-sales', { state: { selectForBill: true } })}>
-          Select Token
+          Select Bill
         </Button>
       </div>
     </PageShell>

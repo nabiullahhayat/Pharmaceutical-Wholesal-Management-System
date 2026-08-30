@@ -1,8 +1,21 @@
 import ConfirmDialog from '../../components/common/ConfirmDialog'
 import TableActions from '../../components/common/TableActions'
 import { formatNumber, toNumber } from '../../utils/numbers'
-import { getBillLines, getBillToken, getPaidAmount, getRemainingAmount } from './dailyBillUtils'
+import {
+  getBillLines,
+  getBillNumber,
+  getPaidAmount,
+  getRemainingAmount,
+} from './dailyBillUtils'
 import { useState } from 'react'
+
+function CellText({ children, title }) {
+  return (
+    <span className="block truncate" title={title ?? children}>
+      {children}
+    </span>
+  )
+}
 
 function DailyBillTable({ bills, onEdit, onDelete, selectMode = false, onSelect }) {
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -34,91 +47,101 @@ function DailyBillTable({ bills, onEdit, onDelete, selectMode = false, onSelect 
   return (
     <>
       <div className="overflow-hidden rounded-2xl border border-brand-gold/25 bg-white">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-brand-red/5 text-brand-dark">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Token</th>
-                <th className="px-4 py-3 font-semibold">Date</th>
-                <th className="px-4 py-3 font-semibold">Customer</th>
-                <th className="px-4 py-3 font-semibold">Visitor</th>
-                <th className="px-4 py-3 font-semibold">Medicines</th>
-                <th className="px-4 py-3 font-semibold">Types</th>
-                <th className="px-4 py-3 font-semibold">Qty</th>
-                <th className="px-4 py-3 font-semibold">Total</th>
-                <th className="px-4 py-3 font-semibold">Paid</th>
-                <th className="px-4 py-3 font-semibold">Remaining</th>
-                {!selectMode && <th className="px-4 py-3 font-semibold">Actions</th>}
-                {selectMode && <th className="px-4 py-3 font-semibold">Select</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-brand-gold/15">
-              {bills.map((bill) => {
-                const lines = getBillLines(bill)
-                const totalQuantity = lines.reduce((sum, line) => sum + toNumber(line.quantity), 0)
-                const medicineNames = lines
-                  .map((line) => line.medicineName ?? line.productName)
-                  .join(', ')
-                const typeNames = lines.map((line) => line.typeName).filter(Boolean).join(', ')
+        <table className="w-full table-fixed text-left text-xs">
+          <thead className="bg-brand-red/5 text-brand-dark">
+            <tr>
+              <th className="w-[9%] px-2 py-2 font-semibold">Bill #</th>
+              <th className="w-[10%] px-2 py-2 font-semibold">Date</th>
+              <th className="w-[12%] px-2 py-2 font-semibold">Customer</th>
+              <th className="w-[10%] px-2 py-2 font-semibold">Visitor</th>
+              <th className="w-[19%] px-2 py-2 font-semibold">Medicines</th>
+              <th className="w-[11%] px-2 py-2 font-semibold">Types</th>
+              <th className="w-[5%] px-2 py-2 font-semibold text-right">Qty</th>
+              <th className="w-[7%] px-2 py-2 font-semibold text-right">Total</th>
+              <th className="w-[6%] px-2 py-2 font-semibold text-right">Paid</th>
+              <th className="w-[7%] px-2 py-2 font-semibold text-right">Rem.</th>
+              {!selectMode && <th className="w-[9%] px-2 py-2 font-semibold">Actions</th>}
+              {selectMode && <th className="w-[9%] px-2 py-2 font-semibold">Select</th>}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-brand-gold/15">
+            {bills.map((bill) => {
+              const lines = getBillLines(bill)
+              const totalQuantity = lines.reduce((sum, line) => sum + toNumber(line.quantity), 0)
+              const medicineNames = lines
+                .map((line) => line.medicineName ?? line.productName)
+                .join(', ')
+              const typeNames = lines.map((line) => line.typeName).filter(Boolean).join(', ')
 
-                return (
-                  <tr
-                    key={bill.id}
-                    onClick={() => handleRowClick(bill)}
-                    className={[
-                      'hover:bg-gray-50/80',
-                      selectMode ? 'cursor-pointer hover:bg-brand-red/5' : '',
-                    ].join(' ')}
-                  >
-                    <td className="px-4 py-3 whitespace-nowrap font-medium">{getBillToken(bill)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{bill.date}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{bill.customerName}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{bill.visitorName || '—'}</td>
-                    <td className="px-4 py-3 min-w-40">{medicineNames}</td>
-                    <td className="px-4 py-3 min-w-32">{typeNames || '—'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{formatNumber(totalQuantity)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap font-medium text-brand-red">
-                      {formatNumber(bill.grandTotal)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {bill.moneyPaid ? formatNumber(getPaidAmount(bill)) : '—'}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {getRemainingAmount(bill) > 0 ? (
-                        <span className="font-medium text-amber-700">
-                          {formatNumber(getRemainingAmount(bill))}
-                        </span>
-                      ) : (
-                        formatNumber(0)
-                      )}
-                    </td>
-                    {!selectMode && (
-                      <td className="px-4 py-3 whitespace-nowrap" onClick={(event) => event.stopPropagation()}>
-                        <TableActions
-                          onEdit={() => onEdit(bill)}
-                          onDelete={() => setDeleteTarget(bill)}
-                        />
-                      </td>
+              return (
+                <tr
+                  key={bill.id}
+                  onClick={() => handleRowClick(bill)}
+                  className={[
+                    'hover:bg-gray-50/80',
+                    selectMode ? 'cursor-pointer hover:bg-brand-red/5' : '',
+                  ].join(' ')}
+                >
+                  <td className="px-2 py-2 font-medium">
+                    <CellText>{getBillNumber(bill)}</CellText>
+                  </td>
+                  <td className="px-2 py-2">
+                    <CellText>{bill.date}</CellText>
+                  </td>
+                  <td className="px-2 py-2">
+                    <CellText title={bill.customerName}>{bill.customerName}</CellText>
+                  </td>
+                  <td className="px-2 py-2">
+                    <CellText title={bill.visitorName}>{bill.visitorName || '—'}</CellText>
+                  </td>
+                  <td className="px-2 py-2">
+                    <CellText title={medicineNames}>{medicineNames}</CellText>
+                  </td>
+                  <td className="px-2 py-2">
+                    <CellText title={typeNames}>{typeNames || '—'}</CellText>
+                  </td>
+                  <td className="px-2 py-2 text-right">{formatNumber(totalQuantity)}</td>
+                  <td className="px-2 py-2 text-right font-medium text-brand-red">
+                    {formatNumber(bill.grandTotal)}
+                  </td>
+                  <td className="px-2 py-2 text-right">
+                    {bill.moneyPaid ? formatNumber(getPaidAmount(bill)) : '—'}
+                  </td>
+                  <td className="px-2 py-2 text-right">
+                    {getRemainingAmount(bill) > 0 ? (
+                      <span className="font-medium text-amber-700">
+                        {formatNumber(getRemainingAmount(bill))}
+                      </span>
+                    ) : (
+                      formatNumber(0)
                     )}
-                    {selectMode && (
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="inline-flex rounded-full bg-brand-red px-3 py-1 text-xs font-semibold text-white">
-                          Preview Bill
-                        </span>
-                      </td>
-                    )}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                  </td>
+                  {!selectMode && (
+                    <td className="px-2 py-2" onClick={(event) => event.stopPropagation()}>
+                      <TableActions
+                        onEdit={() => onEdit(bill)}
+                        onDelete={() => setDeleteTarget(bill)}
+                      />
+                    </td>
+                  )}
+                  {selectMode && (
+                    <td className="px-2 py-2">
+                      <span className="inline-flex rounded-full bg-brand-red px-2 py-0.5 text-[10px] font-semibold text-white">
+                        Preview
+                      </span>
+                    </td>
+                  )}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title="Delete Daily Sale"
-        message={`Are you sure you want to delete sale token ${getBillToken(deleteTarget)}?`}
+        message={`Are you sure you want to delete bill ${getBillNumber(deleteTarget)}?`}
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />

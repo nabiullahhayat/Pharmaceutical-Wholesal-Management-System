@@ -1,16 +1,20 @@
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { LANDSCAPE_SLOT } from './billLayoutUtils'
+import { BRAND_COLORS } from '../constants/brand'
 
 const PDF_COLORS = {
-  red: '#e60000',
-  dark: '#1a1a1a',
-  goldLight: '#fffbf5',
-  redLight: '#fef2f2',
-  white: '#ffffff',
+  primary: BRAND_COLORS.primary,
+  secondary: BRAND_COLORS.secondary,
+  dark: BRAND_COLORS.dark,
+  primaryLight: BRAND_COLORS.primaryLight,
+  secondaryLight: BRAND_COLORS.secondaryLight,
+  white: BRAND_COLORS.white,
+  goldLight: BRAND_COLORS.light,
 }
 
-const CAPTURE_DPI = 300
+const CAPTURE_DPI = 600
+const MIN_CAPTURE_SCALE = 6
 const MM_TO_IN = 1 / 25.4
 
 function sanitizeToken(token) {
@@ -36,12 +40,18 @@ function applyPdfSafeStyles(clonedRoot) {
 
   const header = clonedRoot.querySelector('[data-bill-header]')
   if (header) {
-    header.style.backgroundColor = PDF_COLORS.red
-    header.style.color = PDF_COLORS.white
+    header.style.backgroundColor = PDF_COLORS.white
+    header.style.color = PDF_COLORS.dark
+  }
+
+  const footer = clonedRoot.querySelector('[data-bill-footer]')
+  if (footer) {
+    footer.style.backgroundColor = PDF_COLORS.white
+    footer.style.color = PDF_COLORS.dark
   }
 
   clonedRoot.querySelectorAll('[data-bill-table-head]').forEach((node) => {
-    node.style.backgroundColor = PDF_COLORS.red
+    node.style.backgroundColor = PDF_COLORS.primary
     node.style.color = PDF_COLORS.white
   })
 
@@ -50,11 +60,11 @@ function applyPdfSafeStyles(clonedRoot) {
   })
 
   clonedRoot.querySelectorAll('[data-bill-total-box]').forEach((node) => {
-    node.style.backgroundColor = PDF_COLORS.redLight
+    node.style.backgroundColor = PDF_COLORS.primaryLight
   })
 
   clonedRoot.querySelectorAll('[data-bill-total-value]').forEach((node) => {
-    node.style.color = PDF_COLORS.red
+    node.style.color = PDF_COLORS.secondary
   })
 }
 
@@ -72,12 +82,23 @@ function applyFinalScaleToFit(element, maxWidthPx, maxHeightPx) {
 }
 
 async function waitForPreviewReady(element) {
+  const fontLoads = [
+    document.fonts.load('400 16px "Noto Naskh Arabic"'),
+    document.fonts.load('700 16px "Noto Naskh Arabic"'),
+    document.fonts.load('400 16px "Noto Sans Arabic"'),
+    document.fonts.load('700 16px "Noto Sans Arabic"'),
+  ]
+
+  await Promise.allSettled(fontLoads)
+
   if (document.fonts?.ready) {
     await document.fonts.ready
   }
+
   await new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(resolve))
   })
+
   element.scrollIntoView({ block: 'center' })
 }
 
@@ -110,7 +131,7 @@ export async function exportBillPreviewToPdf(previewElement, token) {
   const printableHeightMm = slotHeightMm - marginMm * 2
 
   const targetCaptureWidth = LANDSCAPE_SLOT.widthPx
-  const captureScale = Math.max(3, mmToPx(slotWidthMm) / targetCaptureWidth)
+  const captureScale = Math.max(MIN_CAPTURE_SCALE, mmToPx(slotWidthMm) / targetCaptureWidth)
 
   const canvas = await html2canvas(billRoot, {
     scale: captureScale,
@@ -118,6 +139,7 @@ export async function exportBillPreviewToPdf(previewElement, token) {
     allowTaint: true,
     backgroundColor: PDF_COLORS.white,
     logging: false,
+    imageTimeout: 15000,
     scrollX: 0,
     scrollY: 0,
     width: LANDSCAPE_SLOT.widthPx,
@@ -137,7 +159,7 @@ export async function exportBillPreviewToPdf(previewElement, token) {
     throw new Error('Could not capture bill preview')
   }
 
-  const imgData = canvas.toDataURL('image/png')
+  const imgData = canvas.toDataURL('image/png', 1.0)
 
   const pdf = new jsPDF({
     orientation: 'landscape',
@@ -148,16 +170,16 @@ export async function exportBillPreviewToPdf(previewElement, token) {
 
   const pageWidth = pdf.internal.pageSize.getWidth()
   const pageHeight = pdf.internal.pageSize.getHeight()
-  const halfHeight = pageHeight / 2
+  const halfWidth = pageWidth / 2
 
-  const topY = marginMm
-  const bottomY = halfHeight + marginMm
+  const leftX = marginMm
+  const rightX = halfWidth + marginMm
 
   pdf.addImage(
     imgData,
     'PNG',
+    leftX,
     marginMm,
-    topY,
     printableWidthMm,
     printableHeightMm,
     undefined,
@@ -166,8 +188,8 @@ export async function exportBillPreviewToPdf(previewElement, token) {
   pdf.addImage(
     imgData,
     'PNG',
+    rightX,
     marginMm,
-    bottomY,
     printableWidthMm,
     printableHeightMm,
     undefined,
@@ -177,7 +199,7 @@ export async function exportBillPreviewToPdf(previewElement, token) {
   pdf.setDrawColor(180, 180, 180)
   pdf.setLineWidth(0.2)
   pdf.setLineDashPattern([2, 2], 0)
-  pdf.line(marginMm, halfHeight, pageWidth - marginMm, halfHeight)
+  pdf.line(halfWidth, marginMm, halfWidth, pageHeight - marginMm)
 
   triggerBlobDownload(pdf.output('blob'), filename)
 }

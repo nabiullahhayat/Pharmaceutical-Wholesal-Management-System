@@ -4,7 +4,7 @@ import {
   areTableFiltersActive,
   filterBills,
   getBillLines,
-  getBillToken,
+  getBillNumber,
   getPaidAmount,
   getRemainingAmount,
 } from '../pages/DailyBills/dailyBillUtils'
@@ -14,7 +14,7 @@ function billToRow(bill) {
   const totalQuantity = lines.reduce((sum, line) => sum + toNumber(line.quantity), 0)
 
   return {
-    Token: getBillToken(bill),
+    'Bill #': getBillNumber(bill),
     Date: bill.date,
     Customer: bill.customerName,
     Visitor: bill.visitorName || '',
@@ -22,6 +22,7 @@ function billToRow(bill) {
     Types: lines.map((line) => line.typeName).filter(Boolean).join(', '),
     Quantity: totalQuantity,
     Total: bill.grandTotal,
+    'Credit Used': toNumber(bill.creditUsed) > 0 ? bill.creditUsed : 0,
     Paid: bill.moneyPaid ? getPaidAmount(bill) : 0,
     Remaining: getRemainingAmount(bill),
   }

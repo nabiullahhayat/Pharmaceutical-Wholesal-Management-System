@@ -1,7 +1,8 @@
 import { memo } from 'react'
 import { APP_SHORT_NAME } from '../../constants/app'
+import { LOGO_PATH } from '../../constants/brand'
 
-function Logo({ size = 'md', showText = true, className = '' }) {
+function Logo({ size = 'md', showText = true, className = '', variant = 'light' }) {
   const sizes = {
     sm: { box: 'h-10 w-10', title: 'text-sm', subtitle: 'text-xs' },
     md: { box: 'h-14 w-14 sm:h-16 sm:w-16', title: 'text-sm sm:text-base', subtitle: 'text-xs sm:text-sm' },
@@ -9,12 +10,17 @@ function Logo({ size = 'md', showText = true, className = '' }) {
   }
 
   const config = sizes[size] ?? sizes.md
+  const isDark = variant === 'dark'
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      <div className={`${config.box} flex shrink-0 items-center justify-center`}>
+      <div
+        className={`${config.box} flex shrink-0 items-center justify-center overflow-hidden rounded-xl ${
+          isDark ? 'bg-white/10' : ''
+        }`}
+      >
         <img
-          src="/BrowserLogo.png"
+          src={LOGO_PATH}
           alt={`${APP_SHORT_NAME} logo`}
           className="h-full w-full object-contain"
           loading="lazy"
@@ -22,10 +28,14 @@ function Logo({ size = 'md', showText = true, className = '' }) {
       </div>
       {showText && (
         <div className="min-w-0 text-left">
-          <h2 className={`${config.title} font-bold leading-snug text-brand-dark`}>
+          <h2
+            className={`${config.title} font-bold leading-snug ${
+              isDark ? 'text-white' : 'text-brand-dark'
+            }`}
+          >
             {APP_SHORT_NAME}
           </h2>
-          <p className={`${config.subtitle} mt-0.5 text-gray-500`}>
+          <p className={`${config.subtitle} mt-0.5 ${isDark ? 'text-white/60' : 'text-gray-500'}`}>
             Medicine Shop Management
           </p>
         </div>

@@ -1,9 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-red: #e60000;
-  --color-brand-gold: #fdb813;
-  --color-brand-dark: #1a1a1a;
+  /* Primary & secondary from logo */
+  --color-brand-primary: #2e3192;
+  --color-brand-secondary: #e91e63;
+
+  /* Supporting palette from logo accents */
+  --color-brand-cyan: #00b0ff;
+  --color-brand-green: #00c853;
+  --color-brand-orange: #ff9100;
+  --color-brand-dark: #141833;
+  --color-brand-light: #f4f5fb;
+
+  /* Backward-compatible aliases used across the app */
+  --color-brand-red: #2e3192;
+  --color-brand-gold: #e91e63;
 }
 
 * {
@@ -27,7 +38,7 @@ input:focus,
 textarea:focus,
 select:focus,
 button:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-brand-gold) 60%, white);
+  outline: 2px solid color-mix(in srgb, var(--color-brand-secondary) 50%, white);
   outline-offset: 2px;
 }
 

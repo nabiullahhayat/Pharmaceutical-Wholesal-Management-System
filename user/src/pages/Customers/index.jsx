@@ -2,35 +2,52 @@ import { useMemo, useState } from 'react'
 import EmptyState from '../../components/common/EmptyState'
 import Input from '../../components/common/Input'
 import PageShell from '../../components/common/PageShell'
+import SearchBar from '../../components/common/SearchBar'
 import Button from '../../components/ui/Button'
 import { STORAGE_KEYS } from '../../constants/storageKeys'
 import { useCollection, useLocalStorage } from '../../hooks'
 import { getTodayJalali, isValidJalaliDateString } from '../../utils/dateUtils'
 import {
+  adjustCustomerCredit,
+  getCustomerCreditBalance,
   getCustomerNetRemaining,
   getCustomerPaymentHistory,
   getCustomerSales,
 } from '../../utils/customerUtils'
 import {
-  getBillToken,
+  getBillNumber,
   getPaidAmount,
   getRemainingAmount,
 } from '../DailyBills/dailyBillUtils'
-import { formatNumber, toNumber } from '../../utils/numbers'
+import { formatNumber, normalizeDecimal, toDecimalInputValue, toNumber } from '../../utils/numbers'
 import { notify } from '../../utils/toast'
 
 function CustomersPage() {
+  const [search, setSearch] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState(null)
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentDate, setPaymentDate] = useState(getTodayJalali())
   const [paymentNotes, setPaymentNotes] = useState('')
 
-  const [customers] = useLocalStorage(STORAGE_KEYS.CUSTOMERS)
+  const [customers, , refreshCustomers] = useLocalStorage(STORAGE_KEYS.CUSTOMERS)
   const [sales] = useLocalStorage(STORAGE_KEYS.DAILY_BILLS)
   const payments = useCollection(STORAGE_KEYS.CUSTOMER_PAYMENTS, {
     add: 'Payment recorded successfully',
     remove: 'Payment removed successfully',
   })
+
+  const filteredCustomers = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    if (!query) return customers
+
+    return customers.filter((customer) => {
+      const haystack = [customer.name, customer.phone, customer.address]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return haystack.includes(query)
+    })
+  }, [customers, search])
 
   const selectedCustomer = useMemo(
     () => customers.find((customer) => customer.id === selectedCustomerId) ?? null,
@@ -56,6 +73,21 @@ function CustomersPage() {
     [sales, payments.items, selectedCustomerId],
   )
 
+  const creditBalance = useMemo(
+    () => (selectedCustomer ? getCustomerCreditBalance(selectedCustomer) : 0),
+    [selectedCustomer],
+  )
+
+  const paymentPreview = useMemo(() => {
+    const amount = toNumber(paymentAmount)
+    if (!amount || amount <= 0) return null
+
+    const appliedToBalance = Math.min(amount, netRemaining)
+    const creditAdded = Math.max(0, amount - appliedToBalance)
+
+    return { amount, appliedToBalance, creditAdded }
+  }, [paymentAmount, netRemaining])
+
   const handleRecordPayment = () => {
     if (!selectedCustomerId) return
 
@@ -70,17 +102,24 @@ function CustomersPage() {
       return
     }
 
-    if (amount > netRemaining) {
-      notify.error(`Payment cannot exceed remaining balance (${formatNumber(netRemaining)})`)
-      return
+    const appliedToBalance = normalizeDecimal(Math.min(amount, netRemaining))
+    const creditAdded = normalizeDecimal(amount - appliedToBalance)
+
+    if (appliedToBalance > 0) {
+      payments.add({
+        customerId: selectedCustomerId,
+        amount: toDecimalInputValue(appliedToBalance),
+        date: paymentDate,
+        notes: paymentNotes.trim(),
+      })
+    } else if (creditAdded > 0) {
+      notify.success(`${formatNumber(creditAdded)} added to customer credit`)
     }
 
-    payments.add({
-      customerId: selectedCustomerId,
-      amount: String(amount),
-      date: paymentDate,
-      notes: paymentNotes.trim(),
-    })
+    if (creditAdded > 0) {
+      adjustCustomerCredit(selectedCustomerId, creditAdded)
+      refreshCustomers()
+    }
 
     setPaymentAmount('')
     setPaymentNotes('')
@@ -90,7 +129,7 @@ function CustomersPage() {
   return (
     <PageShell
       title="Customers"
-      description="View customer profiles, sales history, and remaining balances."
+      description="View customer profiles, sales history, balances, and credit."
       badge={
         <span className="inline-flex rounded-full bg-brand-red/5 px-3 py-1 text-xs font-medium text-brand-red">
           {customers.length} customers
@@ -106,9 +145,20 @@ function CustomersPage() {
         <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
           <div className="rounded-2xl border border-brand-gold/25 bg-white p-3">
             <h2 className="mb-3 px-2 text-sm font-semibold text-brand-dark">All Customers</h2>
+            <div className="mb-3 px-1">
+              <SearchBar
+                value={search}
+                onChange={setSearch}
+                placeholder="Search customers..."
+              />
+            </div>
             <div className="max-h-[70vh] space-y-1 overflow-y-auto">
-              {customers.map((customer) => {
+              {filteredCustomers.length === 0 ? (
+                <p className="px-2 py-4 text-center text-sm text-gray-500">No customers match your search.</p>
+              ) : (
+              filteredCustomers.map((customer) => {
                 const remaining = getCustomerNetRemaining(sales, payments.items, customer.id)
+                const credit = getCustomerCreditBalance(customer)
                 const isActive = customer.id === selectedCustomerId
 
                 return (
@@ -132,9 +182,15 @@ function CustomersPage() {
                         Remaining: {formatNumber(remaining)}
                       </p>
                     )}
+                    {credit > 0 && (
+                      <p className="mt-1 text-xs font-semibold text-green-700">
+                        Credit: {formatNumber(credit)}
+                      </p>
+                    )}
                   </button>
                 )
-              })}
+              })
+              )}
             </div>
           </div>
 
@@ -151,6 +207,7 @@ function CustomersPage() {
                   <div className="mt-2 space-y-1 text-sm text-gray-600">
                     {selectedCustomer.phone && <p>Phone: {selectedCustomer.phone}</p>}
                     {selectedCustomer.address && <p>Address: {selectedCustomer.address}</p>}
+                    <p>Available Credit: {formatNumber(creditBalance)}</p>
                   </div>
                 </div>
 
@@ -192,11 +249,24 @@ function CustomersPage() {
                   <Button
                     className="mt-3"
                     onClick={handleRecordPayment}
-                    disabled={netRemaining <= 0}
                   >
                     Record Payment
                   </Button>
-                  {netRemaining <= 0 && (
+                  {paymentPreview && (
+                    <div className="mt-3 space-y-1 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                      {paymentPreview.appliedToBalance > 0 && (
+                        <p>
+                          Applied to remaining balance: {formatNumber(paymentPreview.appliedToBalance)}
+                        </p>
+                      )}
+                      {paymentPreview.creditAdded > 0 && (
+                        <p className="font-medium text-green-700">
+                          {formatNumber(paymentPreview.creditAdded)} will be saved as customer credit
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {netRemaining <= 0 && creditBalance <= 0 && !paymentPreview?.creditAdded && (
                     <p className="mt-2 text-xs text-gray-500">No remaining balance to pay.</p>
                   )}
                 </div>
@@ -210,9 +280,10 @@ function CustomersPage() {
                       <table className="min-w-full text-left text-sm">
                         <thead className="bg-brand-red/5 text-brand-dark">
                           <tr>
-                            <th className="px-3 py-2 font-semibold">Token</th>
+                            <th className="px-3 py-2 font-semibold">Bill #</th>
                             <th className="px-3 py-2 font-semibold">Date</th>
                             <th className="px-3 py-2 font-semibold">Total</th>
+                            <th className="px-3 py-2 font-semibold">Credit Used</th>
                             <th className="px-3 py-2 font-semibold">Paid</th>
                             <th className="px-3 py-2 font-semibold">Remaining</th>
                           </tr>
@@ -223,11 +294,14 @@ function CustomersPage() {
                             return (
                               <tr key={sale.id} className="hover:bg-gray-50/80">
                                 <td className="px-3 py-2 whitespace-nowrap font-medium">
-                                  {getBillToken(sale)}
+                                  {getBillNumber(sale)}
                                 </td>
                                 <td className="px-3 py-2 whitespace-nowrap">{sale.date}</td>
                                 <td className="px-3 py-2 whitespace-nowrap">
                                   {formatNumber(sale.grandTotal)}
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap">
+                                  {sale.creditUsed > 0 ? formatNumber(sale.creditUsed) : '—'}
                                 </td>
                                 <td className="px-3 py-2 whitespace-nowrap">
                                   {sale.moneyPaid ? formatNumber(getPaidAmount(sale)) : '—'}

@@ -1,2 +1,2 @@
-export const APP_NAME = 'Medicine Shop Management System'
-export const APP_SHORT_NAME = 'MedShop'
+export const APP_NAME = 'ROHED ARABZAI CO.LTD'
+export const APP_SHORT_NAME = 'ROHED ARABZAI'

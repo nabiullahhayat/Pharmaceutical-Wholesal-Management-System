@@ -35,11 +35,11 @@ function MultiSelect({
 
   return (
     <div ref={containerRef} className="relative">
-      {label && <span className="mb-1.5 block text-sm font-medium text-brand-dark">{label}</span>}
+      {label && <span className="mb-1 block text-xs font-medium text-gray-500">{label}</span>}
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between rounded-lg border border-brand-gold/40 bg-white px-3 py-2 text-left text-sm"
+        className="flex w-full items-center justify-between rounded-lg border border-brand-gold/40 bg-white px-2.5 py-1.5 text-left text-sm"
       >
         <span className={selectedLabels.length ? 'text-brand-dark' : 'text-gray-400'}>
           {selectedLabels.length ? selectedLabels.join(', ') : placeholder}

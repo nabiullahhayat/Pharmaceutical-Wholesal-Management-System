@@ -6,7 +6,7 @@ function SearchBar({ value, onChange, placeholder = 'Search...' }) {
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-brand-gold/40 bg-white py-2 pl-10 pr-3 text-sm text-brand-dark"
+        className="w-full rounded-lg border border-brand-gold/40 bg-white py-1.5 pl-9 pr-2.5 text-sm text-brand-dark"
       />
       <svg
         className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"

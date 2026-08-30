@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import NameCrudPanel from '../../components/common/NameCrudPanel'
 import PageShell from '../../components/common/PageShell'
+import Button from '../../components/ui/Button'
 import { STORAGE_KEYS } from '../../constants/storageKeys'
 import { useCollection } from '../../hooks'
 
@@ -187,6 +188,41 @@ function AddsPage() {
         </span>
       }
     >
+      <div className="mb-5 rounded-2xl border border-brand-gold/25 bg-white p-4 sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-brand-dark">Data Backup</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Save or restore your shop data. Functionality coming soon.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button variant="primary" className="gap-2">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Backup
+            </Button>
+            <Button variant="secondary" className="gap-2">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                />
+              </svg>
+              Upload Backup
+            </Button>
+          </div>
+        </div>
+      </div>
+
       <div className="mb-5 flex flex-wrap gap-2">
         {tabs.map((tab) => (
           <button

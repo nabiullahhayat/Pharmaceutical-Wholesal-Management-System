@@ -8,7 +8,7 @@ function MainLayout() {
   const { isOpen, open, close } = useMobileMenu()
 
   return (
-    <div className="min-h-screen bg-white" dir="ltr">
+    <div className="min-h-screen bg-brand-light" dir="ltr">
       <div className="flex min-h-screen">
         <Sidebar mobileOpen={isOpen} onClose={close} />
 
