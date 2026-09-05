@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
+import ConfirmDialog from '../../components/common/ConfirmDialog'
 import EmptyState from '../../components/common/EmptyState'
 import Input from '../../components/common/Input'
 import PageShell from '../../components/common/PageShell'
 import SearchBar from '../../components/common/SearchBar'
+import TableActions from '../../components/common/TableActions'
 import Button from '../../components/ui/Button'
 import { STORAGE_KEYS } from '../../constants/storageKeys'
 import { useCollection, useLocalStorage } from '../../hooks'
@@ -13,13 +15,16 @@ import {
   getCustomerNetRemaining,
   getCustomerPaymentHistory,
   getCustomerSales,
+  reverseBillCreditEffects,
 } from '../../utils/customerUtils'
 import {
   getBillNumber,
   getPaidAmount,
   getRemainingAmount,
+  normalizeBill,
 } from '../DailyBills/dailyBillUtils'
 import { formatNumber, normalizeDecimal, toDecimalInputValue, toNumber } from '../../utils/numbers'
+import { reverseSaleStockMovements } from '../../utils/saleStockUtils'
 import { notify } from '../../utils/toast'
 
 function CustomersPage() {
@@ -28,13 +33,19 @@ function CustomersPage() {
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentDate, setPaymentDate] = useState(getTodayJalali())
   const [paymentNotes, setPaymentNotes] = useState('')
+  const [deleteSaleTarget, setDeleteSaleTarget] = useState(null)
+  const [deletePaymentTarget, setDeletePaymentTarget] = useState(null)
 
   const [customers, , refreshCustomers] = useLocalStorage(STORAGE_KEYS.CUSTOMERS)
-  const [sales] = useLocalStorage(STORAGE_KEYS.DAILY_BILLS)
+  const salesCollection = useCollection(STORAGE_KEYS.DAILY_BILLS, {
+    remove: 'Daily sale deleted successfully',
+  })
+  const sales = salesCollection.items
   const payments = useCollection(STORAGE_KEYS.CUSTOMER_PAYMENTS, {
     add: 'Payment recorded successfully',
     remove: 'Payment removed successfully',
   })
+  const [, , refreshStockMovements] = useLocalStorage(STORAGE_KEYS.STOCK_MOVEMENTS)
 
   const filteredCustomers = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -126,6 +137,24 @@ function CustomersPage() {
     setPaymentDate(getTodayJalali())
   }
 
+  const handleDeleteSale = () => {
+    if (!deleteSaleTarget) return
+
+    reverseBillCreditEffects(normalizeBill(deleteSaleTarget))
+    reverseSaleStockMovements(deleteSaleTarget.id)
+    salesCollection.remove(deleteSaleTarget.id)
+    refreshCustomers()
+    refreshStockMovements()
+    setDeleteSaleTarget(null)
+  }
+
+  const handleDeletePayment = () => {
+    if (!deletePaymentTarget) return
+
+    payments.remove(deletePaymentTarget.id)
+    setDeletePaymentTarget(null)
+  }
+
   return (
     <PageShell
       title="Customers"
@@ -137,8 +166,8 @@ function CustomersPage() {
       }
     >
       {customers.length === 0 ? (
-        <EmptyState
-          title="No customers yet"
+      <EmptyState
+        title="No customers yet"
           description="Add customers in the Adds menu first."
         />
       ) : (
@@ -286,6 +315,7 @@ function CustomersPage() {
                             <th className="px-3 py-2 font-semibold">Credit Used</th>
                             <th className="px-3 py-2 font-semibold">Paid</th>
                             <th className="px-3 py-2 font-semibold">Remaining</th>
+                            <th className="px-3 py-2 font-semibold text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-brand-gold/15">
@@ -315,6 +345,9 @@ function CustomersPage() {
                                     formatNumber(0)
                                   )}
                                 </td>
+                                <td className="px-3 py-2 whitespace-nowrap text-right">
+                                  <TableActions onDelete={() => setDeleteSaleTarget(sale)} />
+                                </td>
                               </tr>
                             )
                           })}
@@ -334,6 +367,7 @@ function CustomersPage() {
                             <th className="px-3 py-2 font-semibold">Date</th>
                             <th className="px-3 py-2 font-semibold">Amount</th>
                             <th className="px-3 py-2 font-semibold">Notes</th>
+                            <th className="px-3 py-2 font-semibold text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-brand-gold/15">
@@ -344,6 +378,9 @@ function CustomersPage() {
                                 {formatNumber(payment.amount)}
                               </td>
                               <td className="px-3 py-2">{payment.notes || '—'}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-right">
+                                <TableActions onDelete={() => setDeletePaymentTarget(payment)} />
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -356,6 +393,22 @@ function CustomersPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleteSaleTarget)}
+        title="Delete daily sale"
+        message={`Are you sure you want to delete bill ${deleteSaleTarget ? getBillNumber(deleteSaleTarget) : ''}? Stock will be restored and customer credit adjusted.`}
+        onConfirm={handleDeleteSale}
+        onCancel={() => setDeleteSaleTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deletePaymentTarget)}
+        title="Delete payment"
+        message={`Are you sure you want to delete this payment of ${deletePaymentTarget ? formatNumber(deletePaymentTarget.amount) : ''}?`}
+        onConfirm={handleDeletePayment}
+        onCancel={() => setDeletePaymentTarget(null)}
+      />
     </PageShell>
   )
 }

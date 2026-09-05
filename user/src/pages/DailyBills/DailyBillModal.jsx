@@ -12,7 +12,7 @@ import {
   toDecimalInputValue,
   toNumber,
 } from '../../utils/numbers'
-import { getAvailableCreditForBill } from '../../utils/customerUtils'
+import { getAvailableCreditForBill, getCustomerNetRemaining } from '../../utils/customerUtils'
 import { getStockLevelMap } from '../../utils/saleStockUtils'
 import {
   getBillAmountDue,
@@ -37,6 +37,8 @@ function DailyBillModal({
   visitors,
   medicineTypes,
   stockMovements = [],
+  sales = [],
+  payments = [],
   record = null,
 }) {
   const [date, setDate] = useState(getTodayJalali())
@@ -96,6 +98,11 @@ function DailyBillModal({
   const availableCredit = useMemo(
     () => (customerId ? getAvailableCreditForBill(customers, customerId, record) : 0),
     [customers, customerId, record],
+  )
+
+  const customerRemaining = useMemo(
+    () => (customerId ? getCustomerNetRemaining(sales, payments, customerId) : 0),
+    [sales, payments, customerId],
   )
 
   const loadFromRecord = (bill) => {
@@ -307,6 +314,11 @@ function DailyBillModal({
             {customers.length === 0 && (
               <span className="mt-1 block text-xs text-gray-500">
                 Add customers first in the Adds menu
+              </span>
+            )}
+            {customerId && customerRemaining > 0 && (
+              <span className="mt-1 block text-xs font-semibold text-amber-700">
+                Remaining balance: {formatNumber(customerRemaining)}
               </span>
             )}
             {customerId && availableCredit > 0 && (

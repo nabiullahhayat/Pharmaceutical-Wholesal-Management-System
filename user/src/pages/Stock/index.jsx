@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import EmptyState from '../../components/common/EmptyState'
 import Input from '../../components/common/Input'
 import PageShell from '../../components/common/PageShell'
+import Pagination from '../../components/common/Pagination'
 import SearchBar from '../../components/common/SearchBar'
 import TableActions from '../../components/common/TableActions'
 import ConfirmDialog from '../../components/common/ConfirmDialog'
 import Button from '../../components/ui/Button'
 import { STORAGE_KEYS } from '../../constants/storageKeys'
-import { useCollection, useLocalStorage } from '../../hooks'
+import { useCollection, useLocalStorage, usePagination } from '../../hooks'
 import { notify } from '../../utils/toast'
 import { calculateStockLevels, filterStockLevels, sortMovements } from './stockUtils'
 
@@ -45,10 +46,49 @@ function StockPage() {
     [stockLevels, search],
   )
 
-  const recentMovements = useMemo(
-    () => sortMovements(movements.items).slice(0, 10),
+  const sortedMovements = useMemo(
+    () => sortMovements(movements.items),
     [movements.items],
   )
+
+  const {
+    page: stockPage,
+    totalPages: stockTotalPages,
+    paginatedItems: paginatedLevels,
+    goToPage: goToStockPage,
+    resetPage: resetStockPage,
+    pageSize,
+    totalItems: stockTotalItems,
+  } = usePagination(filteredLevels, 6)
+
+  const {
+    page: movementPage,
+    totalPages: movementTotalPages,
+    paginatedItems: paginatedMovements,
+    goToPage: goToMovementPage,
+    resetPage: resetMovementPage,
+    totalItems: movementTotalItems,
+  } = usePagination(sortedMovements, 6)
+
+  useEffect(() => {
+    resetStockPage()
+  }, [search, resetStockPage])
+
+  const prevStockCountRef = useRef(filteredLevels.length)
+  useEffect(() => {
+    if (filteredLevels.length > prevStockCountRef.current) {
+      resetStockPage()
+    }
+    prevStockCountRef.current = filteredLevels.length
+  }, [filteredLevels.length, resetStockPage])
+
+  const prevMovementCountRef = useRef(sortedMovements.length)
+  useEffect(() => {
+    if (sortedMovements.length > prevMovementCountRef.current) {
+      resetMovementPage()
+    }
+    prevMovementCountRef.current = sortedMovements.length
+  }, [sortedMovements.length, resetMovementPage])
 
   const medicineMap = useMemo(
     () => medicines.reduce((map, medicine) => ({ ...map, [medicine.id]: medicine }), {}),
@@ -209,9 +249,11 @@ function StockPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-gold/15">
-                {filteredLevels.map((item, index) => (
+                {paginatedLevels.map((item, index) => (
                   <tr key={item.medicineId} className="hover:bg-gray-50/80">
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">{index + 1}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">
+                      {(stockPage - 1) * pageSize + index + 1}
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap font-medium">{item.name}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{item.formula || '—'}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{item.company || '—'}</td>
@@ -234,13 +276,22 @@ function StockPage() {
               </tbody>
             </table>
           </div>
+          <div className="px-4 pb-4 sm:px-5">
+            <Pagination
+              page={stockPage}
+              totalPages={stockTotalPages}
+              onPageChange={goToStockPage}
+              totalItems={stockTotalItems}
+              pageSize={pageSize}
+            />
+          </div>
         </div>
       )}
 
-      {recentMovements.length > 0 && (
+      {sortedMovements.length > 0 && (
         <div className="mt-6 overflow-hidden rounded-2xl border border-brand-gold/25 bg-white">
           <div className="border-b border-brand-gold/20 px-4 py-3 sm:px-5">
-            <h3 className="text-base font-semibold text-brand-dark">Recent Movements</h3>
+            <h3 className="text-base font-semibold text-brand-dark">Stock Movements</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
@@ -255,7 +306,7 @@ function StockPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-gold/15">
-                {recentMovements.map((movement) => {
+                {paginatedMovements.map((movement) => {
                   const medicine = medicineMap[movement.medicineId]
                   return (
                     <tr key={movement.id} className="hover:bg-gray-50/80">
@@ -285,6 +336,15 @@ function StockPage() {
                 })}
               </tbody>
             </table>
+          </div>
+          <div className="px-4 pb-4 sm:px-5">
+            <Pagination
+              page={movementPage}
+              totalPages={movementTotalPages}
+              onPageChange={goToMovementPage}
+              totalItems={movementTotalItems}
+              pageSize={pageSize}
+            />
           </div>
         </div>
       )}

@@ -38,6 +38,56 @@ export function getBillNumber(bill) {
   return bill.billNumber?.trim() || '—'
 }
 
+export function normalizeBillNumber(value) {
+  return String(value ?? '').trim()
+}
+
+export function getRecordsByBillNumber(billNumber, allRecords) {
+  const target = normalizeBillNumber(billNumber)
+  if (!target) return []
+
+  return (Array.isArray(allRecords) ? allRecords : [])
+    .map(normalizeBill)
+    .filter((item) => normalizeBillNumber(item.billNumber) === target)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+}
+
+export function groupRecordsForBillPreview(record, allRecords) {
+  const matches = getRecordsByBillNumber(record?.billNumber, allRecords)
+  if (matches.length > 0) return matches
+  return record ? [normalizeBill(record)] : []
+}
+
+export function compositeBillFromRecords(records) {
+  if (!records?.length) return null
+
+  const normalized = records.map(normalizeBill)
+  const first = normalized[0]
+  const medicines = normalized.flatMap((record) => getBillLines(record))
+
+  const grandTotal = normalizeDecimal(
+    normalized.reduce((sum, record) => sum + toNumber(record.grandTotal), 0),
+  )
+  const creditUsed = normalizeDecimal(
+    normalized.reduce((sum, record) => sum + toNumber(record.creditUsed), 0),
+  )
+  const paidAmount = normalizeDecimal(
+    normalized.reduce(
+      (sum, record) => sum + (record.moneyPaid ? toNumber(record.paidAmount) : 0),
+      0,
+    ),
+  )
+
+  return normalizeBill({
+    ...first,
+    medicines,
+    grandTotal,
+    creditUsed,
+    paidAmount,
+    moneyPaid: paidAmount > 0 || creditUsed > 0,
+  })
+}
+
 export function getPaidAmount(bill) {
   if (!bill?.moneyPaid) return 0
   return normalizeDecimal(bill.paidAmount)
@@ -129,6 +179,18 @@ export function filterBills(bills, filters) {
   })
 }
 
+export function sortDailyBillsNewestFirst(bills) {
+  return [...bills].sort((a, b) => {
+    const aTime = new Date(a.createdAt ?? 0).getTime()
+    const bTime = new Date(b.createdAt ?? 0).getTime()
+    if (aTime !== bTime) return bTime - aTime
+    return String(b.id ?? '').localeCompare(String(a.id ?? ''))
+  })
+}
+
+export function filterAndSortBills(bills, filters) {
+  return sortDailyBillsNewestFirst(filterBills(bills, filters))
+}
 
 export function formatPaymentStatus(bill) {
   const paid = getPaidAmount(bill)

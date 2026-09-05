@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Pagination from '../../components/common/Pagination'
 import PageShell from '../../components/common/PageShell'
 import Button from '../../components/ui/Button'
 import { STORAGE_KEYS } from '../../constants/storageKeys'
 import { useCollection, useLocalStorage, usePagination } from '../../hooks'
-import { exportDailyBillsToExcel } from '../../utils/exportDailyBills'
 import {
   applyBillCreditEffects,
   reverseBillCreditEffects,
@@ -18,11 +17,19 @@ import {
 } from '../../utils/saleStockUtils'
 import { notify } from '../../utils/toast'
 import BillPreviewModal from '../../components/bill/BillPreviewModal'
-import DailyBillExportModal from './DailyBillExportModal'
 import DailyBillFilters from './DailyBillFilters'
+import DailyBillDetailModal from './DailyBillDetailModal'
 import DailyBillModal from './DailyBillModal'
 import DailyBillTable from './DailyBillTable'
-import { defaultFilters, filterBills, getBillLines, normalizeBill } from './dailyBillUtils'
+import {
+  compositeBillFromRecords,
+  defaultFilters,
+  filterAndSortBills,
+  getBillLines,
+  getBillNumber,
+  groupRecordsForBillPreview,
+  normalizeBill,
+} from './dailyBillUtils'
 
 function DailyBillsPage() {
   const location = useLocation()
@@ -31,10 +38,11 @@ function DailyBillsPage() {
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingBill, setEditingBill] = useState(null)
-  const [exportModalOpen, setExportModalOpen] = useState(false)
+  const [viewingBill, setViewingBill] = useState(null)
   const [filters, setFilters] = useState(defaultFilters)
   const [previewBill, setPreviewBill] = useState(null)
   const [previewCustomer, setPreviewCustomer] = useState(null)
+  const [mergedRecordCount, setMergedRecordCount] = useState(0)
 
   const { items, count, add, update, remove } = useCollection(STORAGE_KEYS.DAILY_BILLS, {
     add: 'Daily sale saved successfully',
@@ -47,9 +55,10 @@ function DailyBillsPage() {
   const [visitors] = useLocalStorage(STORAGE_KEYS.VISITORS)
   const [medicineTypes] = useLocalStorage(STORAGE_KEYS.MEDICINE_TYPES)
   const [stockMovements, , refreshStockMovements] = useLocalStorage(STORAGE_KEYS.STOCK_MOVEMENTS)
+  const { items: payments } = useCollection(STORAGE_KEYS.CUSTOMER_PAYMENTS)
 
   const filteredBills = useMemo(
-    () => filterBills(items, filters),
+    () => filterAndSortBills(items, filters),
     [items, filters],
   )
 
@@ -67,9 +76,13 @@ function DailyBillsPage() {
     resetPage()
   }, [filters, resetPage])
 
-  const handleExport = async (bills, fromDate, toDate) => {
-    await exportDailyBillsToExcel(bills, fromDate, toDate)
-  }
+  const prevItemCountRef = useRef(items.length)
+  useEffect(() => {
+    if (items.length > prevItemCountRef.current) {
+      resetPage()
+    }
+    prevItemCountRef.current = items.length
+  }, [items.length, resetPage])
 
   const openCreateModal = () => {
     setEditingBill(null)
@@ -77,13 +90,22 @@ function DailyBillsPage() {
   }
 
   const openEditModal = (bill) => {
+    setViewingBill(null)
     setEditingBill(bill)
     setModalOpen(true)
+  }
+
+  const openViewModal = (bill) => {
+    setViewingBill(bill)
   }
 
   const closeBillModal = () => {
     setModalOpen(false)
     setEditingBill(null)
+  }
+
+  const closeViewModal = () => {
+    setViewingBill(null)
   }
 
   const handleSaveBill = (billData, recordId) => {
@@ -149,14 +171,26 @@ function DailyBillsPage() {
   }
 
   const handleSelectForBill = (bill) => {
-    const customer = customers.find((item) => item.id === bill.customerId)
-    setPreviewBill(bill)
+    const groupedRecords = groupRecordsForBillPreview(bill, items)
+    const compositeBill = compositeBillFromRecords(groupedRecords)
+    if (!compositeBill) return
+
+    const customer = customers.find((item) => item.id === compositeBill.customerId)
+    setPreviewBill(compositeBill)
     setPreviewCustomer(customer ?? null)
+    setMergedRecordCount(groupedRecords.length)
+
+    if (groupedRecords.length > 1) {
+      notify.info(
+        `Bill #${getBillNumber(compositeBill)} — ${groupedRecords.length} sales records merged into one bill`,
+      )
+    }
   }
 
   const closePreview = () => {
     setPreviewBill(null)
     setPreviewCustomer(null)
+    setMergedRecordCount(0)
   }
 
   const handlePreviewDownloaded = () => {
@@ -182,7 +216,10 @@ function DailyBillsPage() {
         <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-brand-red/20 bg-brand-red/5 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-brand-dark">Select a record to generate PDF bill</p>
-            <p className="mt-1 text-sm text-gray-500">Click any row below to preview the bill, then download as PDF.</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Click any row. All daily sales with the same bill number are merged automatically into one
+              PDF bill.
+            </p>
           </div>
           <Button variant="secondary" onClick={cancelSelectMode}>
             Cancel
@@ -191,13 +228,17 @@ function DailyBillsPage() {
       )}
 
       {!selectForBill && (
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
-          <Button variant="secondary" onClick={() => setExportModalOpen(true)}>
-            Export to Excel
-          </Button>
+        <div className="mb-5 flex justify-end">
           <Button onClick={openCreateModal}>Add Daily Sale</Button>
         </div>
       )}
+
+      <DailyBillDetailModal
+        open={Boolean(viewingBill)}
+        onClose={closeViewModal}
+        bill={viewingBill}
+        onEdit={selectForBill ? null : openEditModal}
+      />
 
       <DailyBillModal
         open={modalOpen}
@@ -209,6 +250,8 @@ function DailyBillsPage() {
         visitors={visitors}
         medicineTypes={medicineTypes}
         stockMovements={stockMovements}
+        sales={items}
+        payments={payments}
       />
 
       <BillPreviewModal
@@ -216,15 +259,8 @@ function DailyBillsPage() {
         onClose={closePreview}
         bill={previewBill}
         customer={previewCustomer}
+        mergedRecordCount={mergedRecordCount}
         onDownloaded={handlePreviewDownloaded}
-      />
-
-      <DailyBillExportModal
-        open={exportModalOpen}
-        onClose={() => setExportModalOpen(false)}
-        allBills={items}
-        tableFilters={filters}
-        onExport={handleExport}
       />
 
       <div className="space-y-5">
@@ -242,6 +278,7 @@ function DailyBillsPage() {
           bills={paginatedItems}
           onEdit={openEditModal}
           onDelete={handleDeleteBill}
+          onView={openViewModal}
           selectMode={selectForBill}
           onSelect={handleSelectForBill}
         />

@@ -17,7 +17,7 @@ function CellText({ children, title }) {
   )
 }
 
-function DailyBillTable({ bills, onEdit, onDelete, selectMode = false, onSelect }) {
+function DailyBillTable({ bills, onEdit, onDelete, onView, selectMode = false, onSelect }) {
   const [deleteTarget, setDeleteTarget] = useState(null)
 
   if (bills.length === 0) {
@@ -40,31 +40,34 @@ function DailyBillTable({ bills, onEdit, onDelete, selectMode = false, onSelect 
   }
 
   const handleRowClick = (bill) => {
-    if (!selectMode || !onSelect) return
-    onSelect(bill)
+    if (selectMode && onSelect) {
+      onSelect(bill)
+      return
+    }
+    onView?.(bill)
   }
 
   return (
     <>
-      <div className="overflow-hidden rounded-2xl border border-brand-gold/25 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full table-fixed text-left text-xs">
-          <thead className="bg-brand-red/5 text-brand-dark">
+          <thead className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-[0.08em] text-slate-500">
             <tr>
-              <th className="w-[9%] px-2 py-2 font-semibold">Bill #</th>
-              <th className="w-[10%] px-2 py-2 font-semibold">Date</th>
-              <th className="w-[12%] px-2 py-2 font-semibold">Customer</th>
-              <th className="w-[10%] px-2 py-2 font-semibold">Visitor</th>
-              <th className="w-[19%] px-2 py-2 font-semibold">Medicines</th>
-              <th className="w-[11%] px-2 py-2 font-semibold">Types</th>
-              <th className="w-[5%] px-2 py-2 font-semibold text-right">Qty</th>
-              <th className="w-[7%] px-2 py-2 font-semibold text-right">Total</th>
-              <th className="w-[6%] px-2 py-2 font-semibold text-right">Paid</th>
-              <th className="w-[7%] px-2 py-2 font-semibold text-right">Rem.</th>
-              {!selectMode && <th className="w-[9%] px-2 py-2 font-semibold">Actions</th>}
-              {selectMode && <th className="w-[9%] px-2 py-2 font-semibold">Select</th>}
+              <th className="w-[9%] px-2 py-3 font-semibold">Bill #</th>
+              <th className="w-[10%] px-2 py-3 font-semibold">Date</th>
+              <th className="w-[12%] px-2 py-3 font-semibold">Customer</th>
+              <th className="w-[10%] px-2 py-3 font-semibold">Visitor</th>
+              <th className="w-[19%] px-2 py-3 font-semibold">Medicines</th>
+              <th className="w-[11%] px-2 py-3 font-semibold">Types</th>
+              <th className="w-[5%] px-2 py-3 font-semibold text-right">Qty</th>
+              <th className="w-[7%] px-2 py-3 font-semibold text-right">Total</th>
+              <th className="w-[6%] px-2 py-3 font-semibold text-right">Paid</th>
+              <th className="w-[7%] px-2 py-3 font-semibold text-right">Rem.</th>
+              {!selectMode && <th className="w-[9%] px-2 py-3 font-semibold">Actions</th>}
+              {selectMode && <th className="w-[9%] px-2 py-3 font-semibold">Select</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-brand-gold/15">
+          <tbody className="divide-y divide-slate-100">
             {bills.map((bill) => {
               const lines = getBillLines(bill)
               const totalQuantity = lines.reduce((sum, line) => sum + toNumber(line.quantity), 0)
@@ -78,8 +81,8 @@ function DailyBillTable({ bills, onEdit, onDelete, selectMode = false, onSelect 
                   key={bill.id}
                   onClick={() => handleRowClick(bill)}
                   className={[
-                    'hover:bg-gray-50/80',
-                    selectMode ? 'cursor-pointer hover:bg-brand-red/5' : '',
+                    'cursor-pointer transition-colors hover:bg-slate-50',
+                    selectMode ? 'hover:bg-brand-primary/5' : '',
                   ].join(' ')}
                 >
                   <td className="px-2 py-2 font-medium">
@@ -101,7 +104,7 @@ function DailyBillTable({ bills, onEdit, onDelete, selectMode = false, onSelect 
                     <CellText title={typeNames}>{typeNames || '—'}</CellText>
                   </td>
                   <td className="px-2 py-2 text-right">{formatNumber(totalQuantity)}</td>
-                  <td className="px-2 py-2 text-right font-medium text-brand-red">
+                  <td className="px-2 py-2.5 text-right font-semibold tabular-nums text-brand-primary">
                     {formatNumber(bill.grandTotal)}
                   </td>
                   <td className="px-2 py-2 text-right">
@@ -126,7 +129,7 @@ function DailyBillTable({ bills, onEdit, onDelete, selectMode = false, onSelect 
                   )}
                   {selectMode && (
                     <td className="px-2 py-2">
-                      <span className="inline-flex rounded-full bg-brand-red px-2 py-0.5 text-[10px] font-semibold text-white">
+                      <span className="inline-flex rounded-full bg-brand-primary px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                         Preview
                       </span>
                     </td>

@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Button from '../ui/Button'
 import ConfirmDialog from './ConfirmDialog'
 import EmptyState from './EmptyState'
 import Input from './Input'
 import Modal from './Modal'
+import Pagination from './Pagination'
 import TableActions from './TableActions'
+import { usePagination } from '../../hooks'
 import { notify } from '../../utils/toast'
 
 function buildInitialForm(fields) {
@@ -26,11 +28,30 @@ function NameCrudPanel({
   addLabel,
   emptyTitle = 'No records yet',
   emptyDescription = 'Add your first record using the form above.',
+  pageSize = 6,
 }) {
   const [form, setForm] = useState(() => buildInitialForm(fields))
   const [editingRecord, setEditingRecord] = useState(null)
   const [editForm, setEditForm] = useState(() => buildInitialForm(fields))
   const [deleteTarget, setDeleteTarget] = useState(null)
+
+  const {
+    page,
+    totalPages,
+    paginatedItems,
+    goToPage,
+    resetPage,
+    pageSize: resolvedPageSize,
+    totalItems,
+  } = usePagination(items, pageSize)
+
+  const prevItemCountRef = useRef(items.length)
+  useEffect(() => {
+    if (items.length > prevItemCountRef.current) {
+      resetPage()
+    }
+    prevItemCountRef.current = items.length
+  }, [items.length, resetPage])
 
   const resetForm = () => setForm(buildInitialForm(fields))
 
@@ -132,13 +153,13 @@ function NameCrudPanel({
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-gold/15">
-                {items.map((item, index) => (
+                {paginatedItems.map((item, index) => (
                   <tr key={item.id} className="hover:bg-gray-50/80">
                     {tableColumns.map((column) => {
                       if (column.key === '__index') {
                         return (
                           <td key={column.key} className="px-4 py-3 whitespace-nowrap text-gray-500">
-                            {index + 1}
+                            {(page - 1) * resolvedPageSize + index + 1}
                           </td>
                         )
                       }
@@ -165,6 +186,15 @@ function NameCrudPanel({
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="px-4 pb-4 sm:px-5">
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={goToPage}
+              totalItems={totalItems}
+              pageSize={resolvedPageSize}
+            />
           </div>
         </div>
       )}

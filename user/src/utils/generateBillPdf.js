@@ -40,8 +40,8 @@ function applyPdfSafeStyles(clonedRoot) {
 
   const header = clonedRoot.querySelector('[data-bill-header]')
   if (header) {
-    header.style.backgroundColor = PDF_COLORS.white
-    header.style.color = PDF_COLORS.dark
+    header.style.background = `linear-gradient(135deg, ${PDF_COLORS.primary} 0%, #3d42a8 55%, ${PDF_COLORS.secondary} 100%)`
+    header.style.color = PDF_COLORS.white
   }
 
   const footer = clonedRoot.querySelector('[data-bill-footer]')
@@ -51,7 +51,7 @@ function applyPdfSafeStyles(clonedRoot) {
   }
 
   clonedRoot.querySelectorAll('[data-bill-table-head]').forEach((node) => {
-    node.style.backgroundColor = PDF_COLORS.primary
+    node.style.backgroundColor = PDF_COLORS.dark
     node.style.color = PDF_COLORS.white
   })
 
@@ -83,6 +83,8 @@ function applyFinalScaleToFit(element, maxWidthPx, maxHeightPx) {
 
 async function waitForPreviewReady(element) {
   const fontLoads = [
+    document.fonts.load('400 16px "Inter"'),
+    document.fonts.load('700 16px "Inter"'),
     document.fonts.load('400 16px "Noto Naskh Arabic"'),
     document.fonts.load('700 16px "Noto Naskh Arabic"'),
     document.fonts.load('400 16px "Noto Sans Arabic"'),

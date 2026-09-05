@@ -1,6 +1,8 @@
 import { BRAND_COLORS, LOGO_PATH } from '../../constants/brand'
 import {
+  BILL_FONT_EN,
   BILL_PASHTO_FONT,
+  BILL_SHOP_ADDRESS_EN,
   BILL_SHOP_ADDRESS_PS,
   BILL_SHOP_NAME_EN,
   BILL_SHOP_NAME_PS,
@@ -26,7 +28,7 @@ function PashtoText({ children, style = {} }) {
   )
 }
 
-function PhoneIcon({ size = 14, color = BRAND_COLORS.primary }) {
+function PhoneIcon({ size = 12, color = BRAND_COLORS.primary }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
@@ -37,7 +39,7 @@ function PhoneIcon({ size = 14, color = BRAND_COLORS.primary }) {
   )
 }
 
-function WhatsAppIcon({ size = 14 }) {
+function WhatsAppIcon({ size = 12 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
@@ -50,23 +52,24 @@ function WhatsAppIcon({ size = 14 }) {
 
 function MedicineTable({ lines, layout, startIndex = 0 }) {
   const thStyle = {
-    backgroundColor: BRAND_COLORS.primary,
+    backgroundColor: BRAND_COLORS.dark,
     color: BRAND_COLORS.white,
-    padding: `${layout.cellPad}px 2px`,
-    fontWeight: 700,
-    fontSize: `${layout.tableSize}px`,
-    textAlign: 'center',
-    border: `1px solid ${BRAND_COLORS.primary}`,
-    lineHeight: 1.15,
+    padding: `${layout.cellPad + 2}px 4px`,
+    fontWeight: 600,
+    fontSize: `${Math.max(layout.tableSize - 1, 6)}px`,
+    textAlign: 'left',
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    fontFamily: BILL_FONT_EN,
   }
 
   const tdStyle = {
-    padding: `${layout.cellPad}px 2px`,
-    border: `1px solid ${BRAND_COLORS.border}`,
+    padding: `${layout.cellPad + 1}px 4px`,
+    borderBottom: `1px solid ${BRAND_COLORS.border}`,
     fontSize: `${layout.tableSize}px`,
     verticalAlign: 'middle',
-    lineHeight: 1.15,
-    textAlign: 'center',
+    lineHeight: 1.25,
+    fontFamily: BILL_FONT_EN,
   }
 
   return (
@@ -75,25 +78,24 @@ function MedicineTable({ lines, layout, startIndex = 0 }) {
         width: '100%',
         borderCollapse: 'collapse',
         tableLayout: 'fixed',
-        fontFamily: BILL_PASHTO_FONT,
       }}
     >
       <thead>
         <tr>
-          <th data-bill-table-head style={{ ...thStyle, width: '8%' }}>
+          <th data-bill-table-head style={{ ...thStyle, width: '7%', textAlign: 'center' }}>
             #
           </th>
-          <th data-bill-table-head style={{ ...thStyle, width: '38%' }}>
-            Name
+          <th data-bill-table-head style={{ ...thStyle, width: '40%' }}>
+            Item
           </th>
-          <th data-bill-table-head style={{ ...thStyle, width: '14%' }}>
+          <th data-bill-table-head style={{ ...thStyle, width: '13%', textAlign: 'center' }}>
             Qty
           </th>
-          <th data-bill-table-head style={{ ...thStyle, width: '20%' }}>
-            Price
+          <th data-bill-table-head style={{ ...thStyle, width: '20%', textAlign: 'right' }}>
+            Unit Price
           </th>
-          <th data-bill-table-head style={{ ...thStyle, width: '20%' }}>
-            Total
+          <th data-bill-table-head style={{ ...thStyle, width: '20%', textAlign: 'right' }}>
+            Amount
           </th>
         </tr>
       </thead>
@@ -106,9 +108,13 @@ function MedicineTable({ lines, layout, startIndex = 0 }) {
               (startIndex + index) % 2 === 1 ? { backgroundColor: BRAND_COLORS.light } : undefined
             }
           >
-            <td style={{ ...tdStyle, fontWeight: 600 }}>{startIndex + index + 1}</td>
+            <td style={{ ...tdStyle, textAlign: 'center', color: BRAND_COLORS.muted, fontWeight: 500 }}>
+              {startIndex + index + 1}
+            </td>
             <td style={tdStyle}>
-              <PashtoText>{line.medicineName ?? line.productName}</PashtoText>
+              <span style={{ fontWeight: 600, color: BRAND_COLORS.dark }}>
+                <PashtoText>{line.medicineName ?? line.productName}</PashtoText>
+              </span>
               {line.typeName ? (
                 <span
                   style={{
@@ -116,19 +122,47 @@ function MedicineTable({ lines, layout, startIndex = 0 }) {
                     marginTop: '1px',
                     fontSize: `${Math.max(layout.tableSize - 1, 6)}px`,
                     color: BRAND_COLORS.muted,
+                    fontFamily: BILL_FONT_EN,
                   }}
                 >
                   {line.typeName}
                 </span>
               ) : null}
             </td>
-            <td style={tdStyle}>{formatNumber(line.quantity)}</td>
-            <td style={tdStyle}>{formatNumber(line.pricePerUnit)}</td>
-            <td style={{ ...tdStyle, fontWeight: 700 }}>{formatNumber(line.total)}</td>
+            <td style={{ ...tdStyle, textAlign: 'center' }}>{formatNumber(line.quantity)}</td>
+            <td style={{ ...tdStyle, textAlign: 'right' }}>{formatNumber(line.pricePerUnit)}</td>
+            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700, color: BRAND_COLORS.primary }}>
+              {formatNumber(line.total)}
+            </td>
           </tr>
         ))}
       </tbody>
     </table>
+  )
+}
+
+function SummaryRow({ label, value, bold = false, accent = false }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        gap: '12px',
+        padding: '2px 0',
+        fontSize: '10px',
+        fontFamily: BILL_FONT_EN,
+      }}
+    >
+      <span style={{ color: BRAND_COLORS.muted, fontWeight: 500 }}>{label}</span>
+      <span
+        style={{
+          fontWeight: bold ? 700 : 600,
+          color: accent ? BRAND_COLORS.secondary : BRAND_COLORS.dark,
+        }}
+      >
+        {value}
+      </span>
+    </div>
   )
 }
 
@@ -142,10 +176,8 @@ function BillPreviewDocument({ bill, customer }) {
   const paid = getPaidAmount(normalizedBill)
   const amountDue = getBillAmountDue(normalizedBill)
   const grandTotal = normalizedBill.creditUsed > 0 ? amountDue : normalizedBill.grandTotal
-
-  const metaFontSize = layout.infoSize + 1
-  const nameFontSize = layout.titleSize + 10
-  const iconSize = metaFontSize + 2
+  const metaFontSize = layout.infoSize
+  const nameFontSize = layout.titleSize + 2
 
   return (
     <div
@@ -156,116 +188,223 @@ function BillPreviewDocument({ bill, customer }) {
         maxHeight: `${LANDSCAPE_SLOT.heightPx}px`,
         backgroundColor: BRAND_COLORS.white,
         color: BRAND_COLORS.dark,
-        fontFamily: BILL_PASHTO_FONT,
+        fontFamily: BILL_FONT_EN,
         boxSizing: 'border-box',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        border: `2px solid ${BRAND_COLORS.primary}`,
+        borderRadius: '10px',
+        border: `1px solid ${BRAND_COLORS.border}`,
+        boxShadow: '0 8px 24px rgba(20, 24, 51, 0.08)',
       }}
     >
+      <div
+        style={{
+          flexShrink: 0,
+          height: '5px',
+          background: `linear-gradient(90deg, ${BRAND_COLORS.primary} 0%, ${BRAND_COLORS.cyan} 45%, ${BRAND_COLORS.secondary} 100%)`,
+        }}
+      />
+
       <div
         data-bill-header
         style={{
           flexShrink: 0,
-          borderBottom: `3px solid ${BRAND_COLORS.primary}`,
-          padding: `${layout.headerPad + 2}px 14px 8px`,
-          textAlign: 'center',
-          backgroundColor: BRAND_COLORS.white,
+          padding: `${layout.headerPad + 6}px 16px 12px`,
+          background: `linear-gradient(135deg, ${BRAND_COLORS.primary} 0%, #3d42a8 55%, ${BRAND_COLORS.secondary} 100%)`,
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
         <div
           style={{
+            position: 'absolute',
+            top: '-20px',
+            right: '-20px',
+            width: '90px',
+            height: '90px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(255,255,255,0.08)',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '-30px',
+            left: '30%',
+            width: '70px',
+            height: '70px',
+            borderRadius: '50%',
+            border: '1px solid rgba(255,255,255,0.12)',
+          }}
+        />
+
+        <div
+          style={{
+            position: 'relative',
             display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
-            justifyContent: 'center',
             gap: '12px',
-            marginBottom: '4px',
           }}
         >
-          <img
-            data-bill-logo
-            src={LOGO_PATH}
-            alt="Logo"
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+            <div
+              style={{
+                flexShrink: 0,
+                width: `${layout.logoSize + 8}px`,
+                height: `${layout.logoSize + 8}px`,
+                borderRadius: '12px',
+                backgroundColor: BRAND_COLORS.white,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '6px',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+              }}
+            >
+              <img
+                data-bill-logo
+                src={LOGO_PATH}
+                alt="Logo"
+                style={{
+                  height: `${layout.logoSize - 4}px`,
+                  width: 'auto',
+                  maxWidth: '100%',
+                  objectFit: 'contain',
+                }}
+              />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: `${nameFontSize}px`,
+                  fontWeight: 800,
+                  color: BRAND_COLORS.white,
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.15,
+                  textShadow: '0 1px 2px rgba(0,0,0,0.15)',
+                }}
+              >
+                {BILL_SHOP_NAME_EN}
+              </p>
+              <p
+                style={{
+                  margin: '3px 0 0',
+                  fontSize: `${nameFontSize - 2}px`,
+                  fontWeight: 600,
+                  color: 'rgba(255,255,255,0.92)',
+                  lineHeight: 1.2,
+                }}
+              >
+                <PashtoText>{BILL_SHOP_NAME_PS}</PashtoText>
+              </p>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  marginTop: '6px',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '3px 9px',
+                    borderRadius: '999px',
+                    backgroundColor: 'rgba(255,255,255,0.18)',
+                    border: '1px solid rgba(255,255,255,0.25)',
+                    backdropFilter: 'blur(4px)',
+                  }}
+                >
+                  <PhoneIcon size={metaFontSize} color={BRAND_COLORS.white} />
+                  <span
+                    data-bill-phone
+                    dir="ltr"
+                    style={{
+                      fontSize: `${metaFontSize}px`,
+                      fontWeight: 600,
+                      color: BRAND_COLORS.white,
+                    }}
+                  >
+                    {BILL_SHOP_PHONE}
+                  </span>
+                </span>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '3px 9px',
+                    borderRadius: '999px',
+                    backgroundColor: 'rgba(255,255,255,0.95)',
+                    border: '1px solid rgba(255,255,255,0.4)',
+                  }}
+                >
+                  <WhatsAppIcon size={metaFontSize} />
+                  <span
+                    dir="ltr"
+                    style={{
+                      fontSize: `${metaFontSize}px`,
+                      fontWeight: 600,
+                      color: '#15803D',
+                    }}
+                  >
+                    WhatsApp
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div
             style={{
-              height: `${layout.logoSize}px`,
-              width: 'auto',
-              maxWidth: `${layout.logoSize * 1.4}px`,
-              objectFit: 'contain',
+              textAlign: 'right',
+              flexShrink: 0,
+              padding: '8px 12px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(255,255,255,0.95)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+              minWidth: '100px',
             }}
-          />
-          <div>
+          >
             <p
               style={{
                 margin: 0,
-                fontSize: `${nameFontSize}px`,
+                fontSize: `${metaFontSize + 2}px`,
                 fontWeight: 800,
+                letterSpacing: '0.12em',
                 color: BRAND_COLORS.primary,
-                letterSpacing: '0.03em',
-                lineHeight: 1.15,
               }}
             >
-              {BILL_SHOP_NAME_EN}
+              INVOICE
+            </p>
+            <p
+              data-bill-number
+              style={{
+                margin: '3px 0 0',
+                fontSize: `${metaFontSize + 1}px`,
+                fontWeight: 700,
+                color: BRAND_COLORS.dark,
+              }}
+            >
+              #{billNumber}
             </p>
             <p
               style={{
-                margin: '3px 0 0',
-                fontSize: `${nameFontSize - 2}px`,
-                fontWeight: 700,
-                color: BRAND_COLORS.secondary,
-                lineHeight: 1.2,
+                margin: '2px 0 0',
+                fontSize: `${metaFontSize - 1}px`,
+                color: BRAND_COLORS.muted,
+                fontWeight: 500,
               }}
             >
-              <PashtoText>{BILL_SHOP_NAME_PS}</PashtoText>
+              {normalizedBill.date || '—'}
             </p>
           </div>
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px',
-            margin: '4px 0',
-          }}
-        >
-          <PhoneIcon size={iconSize} />
-          <WhatsAppIcon size={iconSize} />
-          <span
-            data-bill-phone
-            dir="ltr"
-            style={{
-              fontSize: `${metaFontSize}px`,
-              fontWeight: 600,
-              color: BRAND_COLORS.dark,
-              letterSpacing: '0.03em',
-            }}
-          >
-            {BILL_SHOP_PHONE}
-          </span>
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: '12px',
-            fontSize: `${metaFontSize}px`,
-            fontWeight: 600,
-            marginTop: '4px',
-            paddingTop: '4px',
-            borderTop: `1px dashed ${BRAND_COLORS.border}`,
-          }}
-        >
-          <span>
-            <strong>Date: </strong>
-            {normalizedBill.date || '—'}
-          </span>
-          <span data-bill-number>
-            <strong>Bill #: </strong>
-            {billNumber}
-          </span>
         </div>
       </div>
 
@@ -273,43 +412,104 @@ function BillPreviewDocument({ bill, customer }) {
         style={{
           flex: 1,
           minHeight: 0,
-          padding: `${layout.bodyPad}px 12px 6px`,
+          padding: `0 16px ${layout.bodyPad}px`,
           display: 'flex',
           flexDirection: 'column',
-          gap: '6px',
+          gap: '8px',
         }}
       >
         <div
           style={{
-            fontSize: `${metaFontSize}px`,
-            lineHeight: 1.3,
             flexShrink: 0,
-            padding: '5px 8px',
-            borderRadius: '6px',
-            backgroundColor: BRAND_COLORS.light,
-            border: `1px solid ${BRAND_COLORS.border}`,
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: '6px 16px',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '8px',
           }}
         >
-          <span>
-            <strong>Customer: </strong>
-            <PashtoText>{normalizedBill.customerName}</PashtoText>
-          </span>
-          {customer?.phone && (
-            <span dir="ltr">
-              <strong>Phone: </strong>
-              {customer.phone}
-            </span>
-          )}
-          {normalizedBill.visitorName && (
-            <span>
-              <strong>Visitor: </strong>
-              <PashtoText>{normalizedBill.visitorName}</PashtoText>
-            </span>
-          )}
+          <div
+            style={{
+              padding: '6px 10px',
+              borderRadius: '8px',
+              backgroundColor: BRAND_COLORS.light,
+              border: `1px solid ${BRAND_COLORS.border}`,
+            }}
+          >
+            <p
+              style={{
+                margin: '0 0 3px',
+                fontSize: `${metaFontSize - 1}px`,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: BRAND_COLORS.muted,
+              }}
+            >
+              Bill To
+            </p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: `${metaFontSize + 1}px`,
+                fontWeight: 700,
+                color: BRAND_COLORS.dark,
+              }}
+            >
+              <PashtoText>{normalizedBill.customerName}</PashtoText>
+            </p>
+            {customer?.phone && (
+              <p
+                dir="ltr"
+                style={{
+                  margin: '2px 0 0',
+                  fontSize: `${metaFontSize}px`,
+                  color: BRAND_COLORS.muted,
+                  fontWeight: 500,
+                }}
+              >
+                {customer.phone}
+              </p>
+            )}
+          </div>
+
+          <div
+            style={{
+              padding: '6px 10px',
+              borderRadius: '8px',
+              backgroundColor: BRAND_COLORS.white,
+              border: `1px solid ${BRAND_COLORS.border}`,
+            }}
+          >
+            <p
+              style={{
+                margin: '0 0 3px',
+                fontSize: `${metaFontSize - 1}px`,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: BRAND_COLORS.muted,
+              }}
+            >
+              Details
+            </p>
+            {normalizedBill.visitorName ? (
+              <p style={{ margin: 0, fontSize: `${metaFontSize}px`, fontWeight: 600 }}>
+                Visitor: <PashtoText>{normalizedBill.visitorName}</PashtoText>
+              </p>
+            ) : (
+              <p style={{ margin: 0, fontSize: `${metaFontSize}px`, color: BRAND_COLORS.muted }}>
+                No visitor assigned
+              </p>
+            )}
+            <p
+              style={{
+                margin: '2px 0 0',
+                fontSize: `${metaFontSize - 1}px`,
+                color: BRAND_COLORS.muted,
+              }}
+            >
+              {lines.length} item{lines.length === 1 ? '' : 's'}
+            </p>
+          </div>
         </div>
 
         <div
@@ -317,8 +517,10 @@ function BillPreviewDocument({ bill, customer }) {
             flex: 1,
             minHeight: 0,
             display: 'flex',
-            gap: layout.columns > 1 ? '6px' : 0,
+            gap: layout.columns > 1 ? '8px' : 0,
             overflow: 'hidden',
+            borderRadius: '8px',
+            border: `1px solid ${BRAND_COLORS.border}`,
           }}
         >
           {columnChunks.map((chunk, columnIndex) => (
@@ -342,21 +544,38 @@ function BillPreviewDocument({ bill, customer }) {
           <div
             data-bill-total-box
             style={{
-              backgroundColor: BRAND_COLORS.primaryLight,
-              border: `1px solid ${BRAND_COLORS.primary}`,
-              borderRadius: '6px',
-              padding: '4px 10px',
-              textAlign: 'right',
-              minWidth: '130px',
+              minWidth: '180px',
+              borderRadius: '8px',
+              border: `1px solid ${BRAND_COLORS.border}`,
+              backgroundColor: BRAND_COLORS.light,
+              padding: '8px 12px',
             }}
           >
-            <p style={{ margin: 0, fontSize: `${layout.infoSize}px`, color: BRAND_COLORS.muted }}>
-              {normalizedBill.creditUsed > 0 ? 'Amount Due' : 'Grand Total'}
-            </p>
+            <SummaryRow
+              label={normalizedBill.creditUsed > 0 ? 'Amount Due' : 'Grand Total'}
+              value={formatNumber(grandTotal)}
+              bold
+              accent
+            />
+            {(normalizedBill.moneyPaid || normalizedBill.creditUsed > 0 || remaining > 0) && (
+              <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: `1px dashed ${BRAND_COLORS.border}` }}>
+                {normalizedBill.creditUsed > 0 && (
+                  <SummaryRow label="Credit Applied" value={formatNumber(normalizedBill.creditUsed)} />
+                )}
+                <SummaryRow
+                  label="Paid"
+                  value={normalizedBill.moneyPaid ? formatNumber(paid) : 'Unpaid'}
+                />
+                {remaining > 0 && (
+                  <SummaryRow label="Balance Due" value={formatNumber(remaining)} bold />
+                )}
+              </div>
+            )}
             <p
               data-bill-total-value
               style={{
-                margin: '1px 0 0',
+                display: 'none',
+                margin: 0,
                 fontSize: `${layout.infoSize + 2}px`,
                 fontWeight: 700,
                 color: BRAND_COLORS.secondary,
@@ -364,21 +583,6 @@ function BillPreviewDocument({ bill, customer }) {
             >
               {formatNumber(grandTotal)}
             </p>
-            {(normalizedBill.moneyPaid || normalizedBill.creditUsed > 0 || remaining > 0) && (
-              <p
-                style={{
-                  margin: '2px 0 0',
-                  fontSize: `${layout.infoSize - 1}px`,
-                  color: BRAND_COLORS.muted,
-                }}
-              >
-                {normalizedBill.creditUsed > 0 && (
-                  <>Credit: {formatNumber(normalizedBill.creditUsed)} · </>
-                )}
-                Paid: {normalizedBill.moneyPaid ? formatNumber(paid) : 'No'}
-                {remaining > 0 && <> · Remaining: {formatNumber(remaining)}</>}
-              </p>
-            )}
           </div>
         </div>
       </div>
@@ -387,34 +591,79 @@ function BillPreviewDocument({ bill, customer }) {
         data-bill-footer
         style={{
           flexShrink: 0,
-          borderTop: `2px solid ${BRAND_COLORS.primary}`,
-          padding: '8px 14px 10px',
+          borderTop: `1px solid ${BRAND_COLORS.border}`,
+          padding: '8px 16px 10px',
           display: 'flex',
           alignItems: 'flex-end',
           justifyContent: 'space-between',
           gap: '12px',
+          backgroundColor: BRAND_COLORS.white,
         }}
       >
-        <p
-          style={{
-            margin: 0,
-            fontSize: `${metaFontSize}px`,
-            fontWeight: 600,
-            textAlign: 'right',
-            color: BRAND_COLORS.dark,
-            flex: 1,
-          }}
-        >
-          <PashtoText>{BILL_SHOP_ADDRESS_PS}</PashtoText>
-        </p>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p
+            style={{
+              margin: 0,
+              fontSize: `${metaFontSize - 1}px`,
+              fontWeight: 600,
+              color: BRAND_COLORS.muted,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Location
+          </p>
+          <p
+            style={{
+              margin: '2px 0 0',
+              fontSize: `${metaFontSize}px`,
+              fontWeight: 500,
+              color: BRAND_COLORS.dark,
+            }}
+          >
+            {BILL_SHOP_ADDRESS_EN}
+          </p>
+          <p
+            style={{
+              margin: '2px 0 0',
+              fontSize: `${metaFontSize}px`,
+              fontWeight: 600,
+              textAlign: 'left',
+              color: BRAND_COLORS.primary,
+            }}
+          >
+            <PashtoText>{BILL_SHOP_ADDRESS_PS}</PashtoText>
+          </p>
+          <p
+            style={{
+              margin: '4px 0 0',
+              fontSize: `${metaFontSize - 1}px`,
+              color: BRAND_COLORS.muted,
+              fontStyle: 'italic',
+            }}
+          >
+            Thank you for your business
+          </p>
+        </div>
 
-        <div data-bill-signature style={{ minWidth: '180px', textAlign: 'right' }}>
-          <p style={{ margin: 0, fontWeight: 600, fontSize: `${layout.infoSize}px` }}>Signature</p>
+        <div data-bill-signature style={{ minWidth: '150px', textAlign: 'right' }}>
+          <p
+            style={{
+              margin: 0,
+              fontWeight: 600,
+              fontSize: `${layout.infoSize}px`,
+              color: BRAND_COLORS.muted,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Authorized Signature
+          </p>
           <div
             style={{
-              marginTop: '14px',
+              marginTop: '16px',
               borderBottom: `1.5px solid ${BRAND_COLORS.dark}`,
-              minWidth: '160px',
+              minWidth: '140px',
             }}
           />
         </div>
